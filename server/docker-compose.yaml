@@ -9,6 +9,10 @@ services:
       NODE_ENV: production
       DATABASE_URL: "postgresql://chatuser:123456@chat_postgres:5432/chatdb?schema=public"
       JWT_SECRET: "supersecret"
+      CLOUDINARY_CLOUD_NAME : "dzf4ygjfw"
+      CLOUDINARY_API_KEY : "354279934844374"
+      CLOUDINARY_API_SECRET : "JWx9rfGvQP97mXDs88oJqr9qnZM"
+      JWT_REFRESH_SECRET : "KeyResetSieuBiMatCuaTam"
       PORT: 6112
     ports:
       - "6112:6112"

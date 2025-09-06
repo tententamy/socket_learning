@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 const httpServer = createServer(app);
-const io = new Server(httpServer, { cors: { origin: "http://localhost:4000" } });
+const io = new Server(httpServer, { cors: { origin: ["http://localhost:4000" , "http://10.2.51.31:4000"]} });
 new ChatSocket(io);
 
 app.use("/auth", authRoutes);
