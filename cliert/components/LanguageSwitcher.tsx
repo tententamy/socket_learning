@@ -6,23 +6,23 @@ export default function LanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center bg-gray-100 rounded-lg p-1">
       <button
         onClick={() => setLanguage('vi')}
-        className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
           language === 'vi' 
-            ? 'bg-blue-600 text-white' 
-            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            ? 'bg-white text-blue-600 shadow-sm' 
+            : 'text-gray-600 hover:text-gray-800'
         }`}
       >
         🇻🇳 VI
       </button>
       <button
         onClick={() => setLanguage('en')}
-        className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
           language === 'en' 
-            ? 'bg-blue-600 text-white' 
-            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            ? 'bg-white text-blue-600 shadow-sm' 
+            : 'text-gray-600 hover:text-gray-800'
         }`}
       >
         🇺🇸 EN

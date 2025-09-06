@@ -31,6 +31,9 @@ export class ChatSocket {
         content?: string | null;
         fileUrl?: string | null;
         fileName?: string | null;
+        fileType?: string | null;
+        fileSize?: number | null;
+        mimeType?: string | null;
       }) => {
         try {
           let newMessage;
@@ -50,6 +53,9 @@ export class ChatSocket {
                 type: "FILE",
                 fileUrl: data.fileUrl,
                 fileName: data.fileName || null,
+                fileType: data.fileType || null,
+                fileSize: data.fileSize || null,
+                mimeType: data.mimeType || null,
                 userId: (user as any).id,
               },
               include: { user: true },

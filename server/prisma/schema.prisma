@@ -28,6 +28,8 @@ model Message {
   fileUrl   String?                          // Link file (nếu có)
   fileName  String?                          // Tên file gốc (nếu có)
   fileType  String?                          // Loại file (image, video, raw, etc.)
+  fileSize  Int?                             // Kích thước file (bytes)
+  mimeType  String?                          // MIME type của file
   createdAt DateTime @default(now())
 
   user      User     @relation(fields: [userId], references: [id])
