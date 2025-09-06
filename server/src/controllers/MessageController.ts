@@ -1,40 +1,49 @@
 import { Request, Response } from "express";
 import { prisma } from "../config/db";
 import { Server } from "socket.io";
+import cloudinary from "../config/cloudinary";
+import fs from "fs";
 
 export class MessageController {
   constructor(private io: Server) {}
 
   getAll = async (req: Request, res: Response) => {
+    try {
     const messages = await prisma.message.findMany({
       include: { user: { select: { id: true, username: true } } },
       orderBy: { createdAt: "asc" },
     });
-    res.json(messages);
+    res.json(messages);  // 🚀 trả thẳng array
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch messages" });
+  }
   };
 
   upload = async (req: Request, res: Response) => {
     const file = req.file;
-    const user = (req as any).user; // từ authMiddleware
+    const user = (req as any).user;
     if (!file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    // Tạo message trong DB
-    const newMessage = await prisma.message.create({
-      data: {
-        type: "FILE",  
-        content: "", // nếu cần thêm message text thì lấy từ req.body.content
-        fileUrl: `/uploads/${file.filename}`,
+    try {
+      // Upload file lên Cloudinary
+      const result = await cloudinary.uploader.upload(file.path, {
+        folder: "chat-app",
+        resource_type: "auto",
+      });
+
+      // Xoá file tạm local
+      fs.unlinkSync(file.path);
+
+      res.json({
+        url: result.secure_url,
         fileName: file.originalname,
-        userId: user.id,
-      },
-      include: { user: true },
-    });
-
-    // Emit qua socket
-    this.io.emit("message", newMessage);
-
-    res.json(newMessage);
+      });
+    } catch (err) {
+      console.error("❌ Upload failed", err);
+      res.status(500).json({ error: "Upload failed" });
+    }
   };
 }
