@@ -21,10 +21,18 @@ model User {
 }
 
 model Message {
-  id        Int      @id @default(autoincrement())
-  content   String?
-  fileUrl   String?
+  id        Int       @id @default(autoincrement())
+  type      MessageType @default(TEXT)   // Loại tin nhắn
+  content   String?                          // Text content
+  fileUrl   String?                          // Link file (nếu có)
+  fileName  String?                          // Tên file gốc (nếu có)
   createdAt DateTime @default(now())
+
   user      User     @relation(fields: [userId], references: [id])
   userId    Int
+}
+
+enum MessageType {
+  TEXT   // tin nhắn chữ
+  FILE   // tin nhắn file
 }

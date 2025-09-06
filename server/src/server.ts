@@ -10,12 +10,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use("/auth", authRoutes);
-app.use("/messages", messageRoutes);
-
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "http://localhost:4000" } });
 new ChatSocket(io);
+
+app.use("/auth", authRoutes);
+app.use("/messages", messageRoutes(io)); // 👈 truyền io vào routes
 
 httpServer.listen(6112, () => {
   console.log("🚀 Server running at http://localhost:6112");
