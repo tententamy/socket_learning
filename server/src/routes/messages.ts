@@ -17,10 +17,10 @@ export default function messageRoutes(io: Server) {
 
   router.get("/", authMiddleware, messageController.getAll);
   router.post("/uploads", authMiddleware, upload.single("file"), messageController.upload);
-  router.get("/download", messageController.download);
+  //router.get("/download", messageController.download);
   router.get("/download-link", messageController.getDownloadLink);
-  router.get("/file-bytes", authMiddleware, messageController.getFileBytes);
-router.post("/make-public", authMiddleware, messageController.makeFilesPublic);
+  //router.get("/file-bytes", authMiddleware, messageController.getFileBytes);
+  // router.post("/make-public", authMiddleware, messageController.makeFilesPublic);
 
   return router;
 }

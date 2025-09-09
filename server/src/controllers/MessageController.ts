@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { prisma } from "../config/db";
 import { Server } from "socket.io";
 import cloudinary from "../config/cloudinary";
+import streamifier from "streamifier";
 import multer from "multer";
 
 export class MessageController {
@@ -27,45 +28,40 @@ export class MessageController {
     }
 
     try {
-      // Xác định loại file và resource_type phù hợp
       const mimeType = file.mimetype;
       let resourceType: "image" | "video" | "raw" | "auto" = "raw";
-      
-      // Xác định resource_type dựa trên MIME type
-      if (mimeType.startsWith('image/')) {
-        resourceType = "image";
-      } else if (mimeType.startsWith('video/')) {
-        resourceType = "video";
-      } else if (mimeType.startsWith('audio/')) {
-        resourceType = "raw";
-      } else {
-        // Cho các file khác (documents, archives, etc.)
-        resourceType = "raw";
-      }
 
-      console.log(`📤 Uploading ${file.originalname} (${mimeType}) as ${resourceType}`);
+      if (mimeType.startsWith('image/')) resourceType = "image";
+      else if (mimeType.startsWith('video/')) resourceType = "video";
+      else if (mimeType.startsWith('audio/')) resourceType = "raw";
+      else resourceType = "raw";
 
-      // Sử dụng upload trực tiếp với buffer
-      const result = await cloudinary.uploader.upload(
-        `data:${mimeType};base64,${file.buffer.toString('base64')}`,
-        {
-          folder: "chat-app",
-          resource_type: resourceType,
-          public_id: `${Date.now()}_${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`,
-          use_filename: true,
-          unique_filename: false,
-          // Đảm bảo file public
-          access_mode: "public",
-          // Thêm metadata để dễ quản lý
-          context: {
-            original_name: file.originalname,
-            file_size: file.size.toString(),
-            upload_date: new Date().toISOString()
-          }
-        }
-      );
+      const streamUpload = (fileBuffer: Buffer) => {
+        return new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            {
+              folder: "chat-app",
+              resource_type: resourceType,
+              public_id: `${Date.now()}_${file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`,
+              use_filename: true,
+              unique_filename: false,
+              access_mode: "public",
+              context: {
+                original_name: file.originalname,
+                file_size: file.size.toString(),
+                upload_date: new Date().toISOString()
+              }
+            },
+            (error, result) => {
+              if (result) resolve(result);
+              else reject(error);
+            }
+          );
+          streamifier.createReadStream(fileBuffer).pipe(stream);
+        });
+      };
 
-      console.log(`✅ Upload successful: ${result.secure_url}`);
+      const result: any = await streamUpload(file.buffer);
 
       res.json({
         url: result.secure_url,
@@ -74,15 +70,16 @@ export class MessageController {
         fileSize: file.size,
         mimeType: file.mimetype
       });
+
     } catch (err) {
       console.error("❌ Upload failed", err);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Upload failed for this file type",
         details: err instanceof Error ? err.message : "Unknown error"
       });
     }
   };
-
+  
   download = async (req: Request, res: Response) => {
     try {
       const { fileUrl } = req.query;
@@ -134,116 +131,116 @@ export class MessageController {
     }
   };
 
-  // Endpoint mới để lấy file dưới dạng byte array
-  getFileBytes = async (req: Request, res: Response) => {
-    try {
-      const { fileUrl } = req.query;
+  // // Endpoint mới để lấy file dưới dạng byte array
+  // getFileBytes = async (req: Request, res: Response) => {
+  //   try {
+  //     const { fileUrl } = req.query;
       
-      if (!fileUrl || typeof fileUrl !== 'string') {
-        return res.status(400).json({ error: "File URL is required" });
-      }
+  //     if (!fileUrl || typeof fileUrl !== 'string') {
+  //       return res.status(400).json({ error: "File URL is required" });
+  //     }
 
-      console.log(`📥 Getting file bytes for: ${fileUrl}`);
+  //     console.log(`📥 Getting file bytes for: ${fileUrl}`);
 
-      // Extract public_id từ URL
-      const urlParts = fileUrl.split('/');
-      const uploadIndex = urlParts.findIndex(part => part === 'upload');
-      if (uploadIndex === -1) {
-        throw new Error('Invalid Cloudinary URL');
-      }
+  //     // Extract public_id từ URL
+  //     const urlParts = fileUrl.split('/');
+  //     const uploadIndex = urlParts.findIndex(part => part === 'upload');
+  //     if (uploadIndex === -1) {
+  //       throw new Error('Invalid Cloudinary URL');
+  //     }
       
-      const publicIdParts = urlParts.slice(uploadIndex + 1);
-      const publicId = publicIdParts.join('/').split('.')[0];
+  //     const publicIdParts = urlParts.slice(uploadIndex + 1);
+  //     const publicId = publicIdParts.join('/').split('.')[0];
       
-      console.log(`🔍 Public ID: ${publicId}`);
+  //     console.log(`🔍 Public ID: ${publicId}`);
 
-      // Sử dụng Cloudinary SDK để lấy file
-      const result = await cloudinary.api.resource(publicId, {
-        resource_type: "raw"
-      });
+  //     // Sử dụng Cloudinary SDK để lấy file
+  //     const result = await cloudinary.api.resource(publicId, {
+  //       resource_type: "raw"
+  //     });
 
-      console.log(`✅ Got resource info: ${result.secure_url}`);
+  //     console.log(`✅ Got resource info: ${result.secure_url}`);
 
-      // Fetch file từ secure URL
-      const response = await fetch(result.secure_url);
+  //     // Fetch file từ secure URL
+  //     const response = await fetch(result.secure_url);
       
-      if (!response.ok) {
-        console.error(`❌ Fetch failed: ${response.status} ${response.statusText}`);
-        return res.status(404).json({ error: "File not found" });
-      }
+  //     if (!response.ok) {
+  //       console.error(`❌ Fetch failed: ${response.status} ${response.statusText}`);
+  //       return res.status(404).json({ error: "File not found" });
+  //     }
 
-      // Lấy file dưới dạng buffer
-      const buffer = await response.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
+  //     // Lấy file dưới dạng buffer
+  //     const buffer = await response.arrayBuffer();
+  //     const bytes = new Uint8Array(buffer);
 
-      // Lấy thông tin file
-      const contentType = response.headers.get('content-type') || 'application/octet-stream';
-      const fileName = fileUrl.split('/').pop()?.split('?')[0] || 'download';
+  //     // Lấy thông tin file
+  //     const contentType = response.headers.get('content-type') || 'application/octet-stream';
+  //     const fileName = fileUrl.split('/').pop()?.split('?')[0] || 'download';
 
-      console.log(`✅ File bytes retrieved: ${bytes.length} bytes, type: ${contentType}`);
+  //     console.log(`✅ File bytes retrieved: ${bytes.length} bytes, type: ${contentType}`);
 
-      // Set headers cho download
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-      res.setHeader('Content-Length', bytes.length);
+  //     // Set headers cho download
+  //     res.setHeader('Content-Type', contentType);
+  //     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+  //     res.setHeader('Content-Length', bytes.length);
 
-      // Trả về byte array trực tiếp
-      res.send(Buffer.from(bytes));
+  //     // Trả về byte array trực tiếp
+  //     res.send(Buffer.from(bytes));
       
-    } catch (err) {
-      console.error("❌ Get file bytes failed", err);
-      res.status(500).json({ error: "Failed to get file bytes" });
-    }
-  };
+  //   } catch (err) {
+  //     console.error("❌ Get file bytes failed", err);
+  //     res.status(500).json({ error: "Failed to get file bytes" });
+  //   }
+  // };
 
-  // Endpoint để force public tất cả file
-  makeFilesPublic = async (req: Request, res: Response) => {
-    try {
-      console.log(`🔧 Making all files public...`);
+  // // Endpoint để force public tất cả file
+  // makeFilesPublic = async (req: Request, res: Response) => {
+  //   try {
+  //     console.log(`🔧 Making all files public...`);
       
-      // Lấy tất cả file trong folder chat-app
-      const result = await cloudinary.api.resources({
-        type: "upload",
-        resource_type: "raw",
-        prefix: "chat-app/",
-        max_results: 500
-      });
+  //     // Lấy tất cả file trong folder chat-app
+  //     const result = await cloudinary.api.resources({
+  //       type: "upload",
+  //       resource_type: "raw",
+  //       prefix: "chat-app/",
+  //       max_results: 500
+  //     });
 
-      console.log(`📁 Found ${result.resources.length} files`);
+  //     console.log(`📁 Found ${result.resources.length} files`);
 
-      // Update từng file để public
-      const updatePromises = result.resources.map(async (resource: any) => {
-        try {
-          await cloudinary.api.update(resource.public_id, {
-            resource_type: "raw",
-            access_mode: "public",
-            type: "upload"
-          });
-          console.log(`✅ Made public: ${resource.public_id}`);
-          return { success: true, public_id: resource.public_id };
-        } catch (error) {
-          console.error(`❌ Failed to make public: ${resource.public_id}`, error);
-          return { success: false, public_id: resource.public_id, error };
-        }
-      });
+  //     // Update từng file để public
+  //     const updatePromises = result.resources.map(async (resource: any) => {
+  //       try {
+  //         await cloudinary.api.update(resource.public_id, {
+  //           resource_type: "raw",
+  //           access_mode: "public",
+  //           type: "upload"
+  //         });
+  //         console.log(`✅ Made public: ${resource.public_id}`);
+  //         return { success: true, public_id: resource.public_id };
+  //       } catch (error) {
+  //         console.error(`❌ Failed to make public: ${resource.public_id}`, error);
+  //         return { success: false, public_id: resource.public_id, error };
+  //       }
+  //     });
 
-      const results = await Promise.all(updatePromises);
-      const successCount = results.filter(r => r.success).length;
-      const failCount = results.filter(r => !r.success).length;
+  //     const results = await Promise.all(updatePromises);
+  //     const successCount = results.filter(r => r.success).length;
+  //     const failCount = results.filter(r => !r.success).length;
 
-      console.log(`✅ Made ${successCount} files public, ${failCount} failed`);
+  //     console.log(`✅ Made ${successCount} files public, ${failCount} failed`);
 
-      res.json({
-        message: `Made ${successCount} files public, ${failCount} failed`,
-        total: result.resources.length,
-        success: successCount,
-        failed: failCount,
-        results: results
-      });
+  //     res.json({
+  //       message: `Made ${successCount} files public, ${failCount} failed`,
+  //       total: result.resources.length,
+  //       success: successCount,
+  //       failed: failCount,
+  //       results: results
+  //     });
       
-    } catch (err) {
-      console.error("❌ Make files public failed", err);
-      res.status(500).json({ error: "Failed to make files public" });
-    }
-  };
+  //   } catch (err) {
+  //     console.error("❌ Make files public failed", err);
+  //     res.status(500).json({ error: "Failed to make files public" });
+  //   }
+  // };
 }
