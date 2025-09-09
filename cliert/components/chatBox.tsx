@@ -46,7 +46,7 @@ export default function ChatBox() {
       socketInstance.on("connect", () => console.log("✅ Connected:", socketInstance?.id));
       socketInstance.on("message", (m: Message) => {
         setMessages((prev) => {
-          const exists = prev.some(msg => msg.id === m.id);
+          const exists = prev.some((msg) => msg.id === m.id);
           if (exists) return prev;
           return [...prev, m];
         });
@@ -154,104 +154,100 @@ export default function ChatBox() {
   };
 
   const getFileIcon = (fileName: string, mimeType?: string) => {
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    
-    // Dựa vào MIME type trước
+    const ext = fileName.split(".").pop()?.toLowerCase();
+
     if (mimeType) {
-      if (mimeType.startsWith('image/')) return '🖼️';
-      if (mimeType.startsWith('video/')) return '🎥';
-      if (mimeType.startsWith('audio/')) return '🎵';
-      if (mimeType.includes('pdf')) return '📄';
-      if (mimeType.includes('word') || mimeType.includes('document')) return '📝';
-      if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return '📊';
-      if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('archive')) return '🗜️';
-      if (mimeType.includes('text')) return '📄';
+      if (mimeType.startsWith("image/")) return "🖼️";
+      if (mimeType.startsWith("video/")) return "🎥";
+      if (mimeType.startsWith("audio/")) return "🎵";
+      if (mimeType.includes("pdf")) return "📄";
+      if (mimeType.includes("word") || mimeType.includes("document")) return "📝";
+      if (mimeType.includes("excel") || mimeType.includes("spreadsheet")) return "📊";
+      if (mimeType.includes("zip") || mimeType.includes("rar") || mimeType.includes("archive")) return "🗜️";
+      if (mimeType.includes("text")) return "📄";
     }
-    
-    // Fallback dựa vào extension
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext || '')) return '🖼️';
-    if (['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'].includes(ext || '')) return '🎥';
-    if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(ext || '')) return '🎵';
-    if (['pdf'].includes(ext || '')) return '📄';
-    if (['doc', 'docx'].includes(ext || '')) return '📝';
-    if (['xls', 'xlsx', 'csv'].includes(ext || '')) return '📊';
-    if (['ppt', 'pptx'].includes(ext || '')) return '📊';
-    if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(ext || '')) return '🗜️';
-    if (['txt', 'md', 'json', 'xml', 'html', 'css', 'js', 'ts'].includes(ext || '')) return '📄';
-    return '📎';
+
+    if (["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"].includes(ext || "")) return "🖼️";
+    if (["mp4", "webm", "avi", "mov", "mkv", "flv", "wmv"].includes(ext || "")) return "🎥";
+    if (["mp3", "wav", "ogg", "m4a", "aac", "flac"].includes(ext || "")) return "🎵";
+    if (["pdf"].includes(ext || "")) return "📄";
+    if (["doc", "docx"].includes(ext || "")) return "📝";
+    if (["xls", "xlsx", "csv"].includes(ext || "")) return "📊";
+    if (["ppt", "pptx"].includes(ext || "")) return "📊";
+    if (["zip", "rar", "7z", "tar", "gz", "bz2"].includes(ext || "")) return "🗜️";
+    if (["txt", "md", "json", "xml", "html", "css", "js", "ts"].includes(ext || "")) return "📄";
+    return "📎";
   };
 
   const formatFileSize = (bytes: number | null | undefined) => {
-    if (!bytes) return '';
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    if (bytes === 0) return '0 Bytes';
+    if (!bytes) return "";
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    if (bytes === 0) return "0 Bytes";
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+    return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + " " + sizes[i];
   };
 
   const handleDownload = async (fileUrl: string, fileName: string) => {
     try {
-      console.log(`🔄 Starting download for: ${fileName}`);
+      console.log(`🔄 Requesting download link for: ${fileName}`);
+
       const token = localStorage.getItem("token");
       if (!token) {
-        console.error('❌ No token found');
+        console.error("❌ No token found");
         return;
       }
 
-      console.log(`📡 Fetching file directly from server...`);
-      // Lấy file trực tiếp từ server (server trả về file bytes)
-      const response = await fetch(`http://localhost:6112/messages/file-bytes?fileUrl=${encodeURIComponent(fileUrl)}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const response = await fetch(
+        `http://localhost:6112/messages/download-link?fileUrl=${encodeURIComponent(fileUrl)}&fileName=${encodeURIComponent(fileName)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
         }
-      });
+      );
 
       if (!response.ok) {
         console.error(`❌ Server response error: ${response.status} ${response.statusText}`);
-        throw new Error('Failed to get file');
+        throw new Error("Failed to get download link");
       }
 
-      console.log(`✅ Got response from server`);
-      
-      // Lấy blob trực tiếp từ response
-      const blob = await response.blob();
-      console.log(`📦 Received blob: ${blob.size} bytes, type: ${blob.type}`);
-      
-      // Tạo URL và download
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName || 'download';
-      a.style.display = 'none';
+      const { downloadUrl } = await response.json();
+      console.log("✅ Got download link:", downloadUrl);
+
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = fileName || "download";
+      a.style.display = "none";
       document.body.appendChild(a);
-      console.log(`⬇️ Starting download...`);
       a.click();
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      console.log(`✅ Download completed`);
+
+      console.log("⬇️ Download started");
     } catch (error) {
-      console.error('❌ Download error:', error);
-      // Fallback: mở file trong tab mới
-      console.log(`🔄 Fallback: opening in new tab`);
-      window.open(fileUrl, '_blank');
+      console.error("❌ Download error:", error);
+      window.open(fileUrl, "_blank");
     }
   };
 
   const renderFile = (m: Message) => {
     if (!m.fileUrl) return null;
-    
-    const ext = m.fileName?.split('.').pop()?.toLowerCase();
-    const isImage = m.mimeType?.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext || '');
-    const isVideo = m.mimeType?.startsWith('video/') || ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv'].includes(ext || '');
-    const isAudio = m.mimeType?.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(ext || '');
+
+    const ext = m.fileName?.split(".").pop()?.toLowerCase();
+    const isImage =
+      m.mimeType?.startsWith("image/") ||
+      ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"].includes(ext || "");
+    const isVideo =
+      m.mimeType?.startsWith("video/") ||
+      ["mp4", "webm", "avi", "mov", "mkv", "flv", "wmv"].includes(ext || "");
+    const isAudio =
+      m.mimeType?.startsWith("audio/") ||
+      ["mp3", "wav", "ogg", "m4a", "aac", "flac"].includes(ext || "");
 
     if (isImage) {
       return (
         <div className="mt-1">
-          <img 
-            src={m.fileUrl} 
-            alt={m.fileName || "image"} 
-            className="max-w-[200px] rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer" 
+          <img
+            src={m.fileUrl!}
+            alt={m.fileName || "image"}
+            className="max-w-[200px] rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
             loading="lazy"
             onClick={() => m.fileUrl && m.fileName && handleDownload(m.fileUrl, m.fileName)}
           />
@@ -262,16 +258,12 @@ export default function ChatBox() {
         </div>
       );
     }
-    
+
     if (isVideo) {
       return (
         <div className="mt-1">
-          <video 
-            controls 
-            className="max-w-[250px] rounded-lg shadow-sm"
-            preload="metadata"
-          >
-            <source src={m.fileUrl} type={m.mimeType || "video/mp4"} />
+          <video controls className="max-w-[250px] rounded-lg shadow-sm" preload="metadata">
+            <source src={m.fileUrl!} type={m.mimeType || "video/mp4"} />
           </video>
           <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
             <span className="font-medium">{m.fileName}</span>
@@ -288,12 +280,12 @@ export default function ChatBox() {
         </div>
       );
     }
-    
+
     if (isAudio) {
       return (
         <div className="mt-1 p-3 bg-gray-50 rounded-lg border">
           <audio controls className="w-full mb-2">
-            <source src={m.fileUrl} type={m.mimeType || "audio/mpeg"} />
+            <source src={m.fileUrl!} type={m.mimeType || "audio/mpeg"} />
           </audio>
           <div className="flex items-center justify-between text-xs text-gray-600">
             <span className="font-medium">{m.fileName}</span>
@@ -314,7 +306,7 @@ export default function ChatBox() {
     return (
       <div className="mt-1 p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{getFileIcon(m.fileName || '', m.mimeType || undefined)}</span>
+          <span className="text-2xl">{getFileIcon(m.fileName || "", m.mimeType || undefined)}</span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">{m.fileName}</p>
             <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -327,7 +319,12 @@ export default function ChatBox() {
             className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-md transition-colors flex items-center gap-1"
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
             </svg>
             Download
           </button>
@@ -350,23 +347,31 @@ export default function ChatBox() {
         ) : (
           messages.map((m, index) => {
             const isMe = m.user.username === username;
-            const time = new Date(m.createdAt).toLocaleTimeString('vi-VN', { 
-              hour: '2-digit', 
-              minute: '2-digit' 
+            const time = new Date(m.createdAt).toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
             });
-            
+
             return (
-              <div key={`${m.id}-${m.createdAt}-${index}`} className={`mb-6 flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+              <div
+                key={`${m.id}-${m.createdAt}-${index}`}
+                className={`mb-6 flex flex-col ${isMe ? "items-end" : "items-start"}`}
+              >
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-medium text-gray-600">{m.user.username}</span>
                   <span className="text-xs text-gray-400">{time}</span>
                 </div>
-                <div className={`max-w-md break-words ${isMe ? "flex flex-col items-end" : "flex flex-col items-start"}`}>
+                <div
+                  className={`max-w-md break-words ${isMe ? "flex flex-col items-end" : "flex flex-col items-start"}`}
+                >
                   {m.type === "TEXT" && m.content && (
-                    <div className={`px-4 py-2 rounded-2xl shadow-sm ${isMe 
-                      ? "bg-blue-600 text-white rounded-br-md" 
-                      : "bg-white text-gray-900 rounded-bl-md border"
-                    }`}>
+                    <div
+                      className={`px-4 py-2 rounded-2xl shadow-sm ${
+                        isMe
+                          ? "bg-blue-600 text-white rounded-br-md"
+                          : "bg-white text-gray-900 rounded-bl-md border"
+                      }`}
+                    >
                       <div className="whitespace-pre-wrap">{m.content}</div>
                     </div>
                   )}
@@ -386,9 +391,9 @@ export default function ChatBox() {
         <div className="px-4 py-2 bg-blue-50 border-t">
           <div className="flex items-center gap-2">
             <div className="flex-1 bg-gray-200 h-2 rounded-full overflow-hidden">
-              <div 
-                className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-out" 
-                style={{ width: `${uploadProgress}%` }} 
+              <div
+                className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${uploadProgress}%` }}
               />
             </div>
             <span className="text-xs text-blue-600 font-medium">{uploadProgress}%</span>
@@ -420,7 +425,7 @@ export default function ChatBox() {
             </div>
           </div>
         )}
-        
+
         <div className="flex gap-3">
           <div className="flex-1 relative">
             <input
@@ -429,34 +434,39 @@ export default function ChatBox() {
               className="w-full px-4 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
               placeholder={file ? `Gửi ${file.name}...` : "Nhập tin nhắn..."}
               disabled={isSending}
-              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+              onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
             />
           </div>
-          
-          <input 
-            type="file" 
-            onChange={(e) => setFile(e.target.files?.[0] || null)} 
-            className="hidden" 
+
+          <input
+            type="file"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            className="hidden"
             id="fileInput"
             accept="*/*"
           />
-          
-          <label 
-            htmlFor="fileInput" 
+
+          <label
+            htmlFor="fileInput"
             className="flex items-center justify-center w-12 h-12 bg-gray-100 hover:bg-gray-200 rounded-full cursor-pointer transition-colors"
             title="Đính kèm file"
           >
             <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+              />
             </svg>
           </label>
-          
+
           <button
             onClick={sendMessage}
             disabled={(!msg.trim() && !file) || isSending}
             className={`flex items-center justify-center w-12 h-12 rounded-full transition-all ${
               (msg.trim() || file) && !isSending
-                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl" 
+                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
           >
